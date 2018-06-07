@@ -1,0 +1,23 @@
+{
+    "name": "kuria/router",
+    "description": "HTTP request router",
+    "keywords": ["router", "routing", "generate", "url", "match"],
+    "license": "MIT",
+    "require": {
+        "php": ">=7.1",
+        "kuria/url": "^3.1"
+    },
+    "require-dev": {
+        "kuria/dev-meta": "^0.3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Kuria\\Router\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Kuria\\Router\\": "tests"
+        }
+    }
+}
