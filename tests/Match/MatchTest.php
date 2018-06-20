@@ -10,12 +10,12 @@ class MatchTest extends TestCase
 {
     function testShouldCreateResult()
     {
-        $route = $this->createMock(RouteInterface::class);
+        $routeMock = $this->createMock(RouteInterface::class);
         $params = ['foo' => 'bar'];
 
-        $result = new Match($route, $params);
+        $result = new Match($routeMock, $params);
 
-        $this->assertSame($route, $result->getRoute());
+        $this->assertSame($routeMock, $result->getRoute());
         $this->assertSame($params, $result->getParameters());
     }
 }

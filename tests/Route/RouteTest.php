@@ -10,16 +10,16 @@ class RouteTest extends TestCase
 {
     function testShouldCreateRoute()
     {
-        $hostPattern = $this->createMock(Pattern::class);
-        $pathPattern = $this->createMock(PathPattern::class);
+        $hostPatternMock = $this->createMock(Pattern::class);
+        $pathPatternMock = $this->createMock(PathPattern::class);
 
         $route = new Route(
             'foo_bar',
             ['GET', 'POST'],
             'https',
-            $hostPattern,
+            $hostPatternMock,
             123,
-            $pathPattern,
+            $pathPatternMock,
             ['default' => 'foo'],
             ['attr' => 'bar']
         );
@@ -27,9 +27,9 @@ class RouteTest extends TestCase
         $this->assertSame('foo_bar', $route->getName());
         $this->assertSame(['GET', 'POST'], $route->getAllowedMethods());
         $this->assertSame('https', $route->getAllowedScheme());
-        $this->assertSame($hostPattern, $route->getHostPattern());
+        $this->assertSame($hostPatternMock, $route->getHostPattern());
         $this->assertSame(123, $route->getPort());
-        $this->assertSame($pathPattern, $route->getPathPattern());
+        $this->assertSame($pathPatternMock, $route->getPathPattern());
         $this->assertSame(['default' => 'foo'], $route->getDefaults());
         $this->assertSame(['attr' => 'bar'], $route->getAttributes());
     }

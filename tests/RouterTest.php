@@ -143,15 +143,15 @@ class RouterTest extends TestCase
 
     function provideRequestsToMatch(): array
     {
-        $neverMatchingRoute = $this->createConfiguredMock(Route::class, [
+        $neverMatchingRouteMock = $this->createConfiguredMock(Route::class, [
             'match' => null,
         ]);
 
-        $alwaysMatchingRoute = $this->createConfiguredMock(Route::class, [
+        $alwaysMatchingRouteMock = $this->createConfiguredMock(Route::class, [
             'match' => ['always_match' => 'yes'],
         ]);
 
-        $alwaysMatchingRouteB = $this->createConfiguredMock(Route::class, [
+        $alwaysMatchingRouteMockB = $this->createConfiguredMock(Route::class, [
             'match' => ['always_match_b' => 'yes'],
         ]);
 
@@ -190,24 +190,24 @@ class RouterTest extends TestCase
             ],
 
             'no matching routes' => [
-                [$neverMatchingRoute, $neverMatchingRoute],
+                [$neverMatchingRouteMock, $neverMatchingRouteMock],
                 'GET',
                 $fooUrl,
                 new NotFound(),
             ],
 
             'match routes in order' => [
-                [$neverMatchingRoute, $alwaysMatchingRoute, $alwaysMatchingRouteB],
+                [$neverMatchingRouteMock, $alwaysMatchingRouteMock, $alwaysMatchingRouteMockB],
                 'GET',
                 $fooUrl,
-                new Match($alwaysMatchingRoute, ['always_match' => 'yes']),
+                new Match($alwaysMatchingRouteMock, ['always_match' => 'yes']),
             ],
 
             'match routes in different order' => [
-                [$neverMatchingRoute, $alwaysMatchingRouteB, $alwaysMatchingRoute],
+                [$neverMatchingRouteMock, $alwaysMatchingRouteMockB, $alwaysMatchingRouteMock],
                 'GET',
                 $fooUrl,
-                new Match($alwaysMatchingRouteB, ['always_match_b' => 'yes']),
+                new Match($alwaysMatchingRouteMockB, ['always_match_b' => 'yes']),
             ],
 
             'method not allowed' => [
@@ -253,7 +253,7 @@ class RouterTest extends TestCase
             ],
 
             'match GET route as fallback from HEAD' => [
-                [$neverMatchingRoute, $fooGetRequestRoute],
+                [$neverMatchingRouteMock, $fooGetRequestRoute],
                 'HEAD',
                 $fooUrl,
                 new Match($fooGetRequestRoute, ['foo_get' => 'yes']),
