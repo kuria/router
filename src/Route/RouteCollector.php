@@ -6,6 +6,7 @@ class RouteCollector
 {
     /** @var PatternCompiler */
     private $patternCompiler;
+
     /** @var RouteBuilder[] */
     private $builders = [];
 

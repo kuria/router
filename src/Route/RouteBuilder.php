@@ -18,22 +18,31 @@ class RouteBuilder
 
     /** @var PatternCompiler */
     private $patternCompiler;
+
     /** @var string */
     private $name;
+
     /** @var string[]|null */
     private $allowedMethods;
+
     /** @var string|null */
     private $allowedScheme;
+
     /** @var string|null */
     private $hostPattern;
+
     /** @var int|null */
     private $port;
+
     /** @var string|null */
     private $pathPattern;
+
     /** @var array */
     private $defaults = [];
+
     /** @var array */
     private $attributes = [];
+
     /** @var array */
     private $requirements = [];
 

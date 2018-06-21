@@ -9,20 +9,28 @@ class Route implements RouteInterface
 {
     /** @var string */
     private $name;
+
     /** @var array|null */
     private $allowedMethodMap;
+
     /** @var string|null */
     private $allowedScheme;
+
     /** @var Pattern|null */
     private $hostPattern;
+
     /** @var int|null */
     private $port;
+
     /** @var PathPattern */
     private $pathPattern;
+
     /** @var array */
     private $defaults;
+
     /** @var array */
     private $attributes;
+
     /** @var array */
     private $knownParamMap;
 

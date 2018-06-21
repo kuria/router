@@ -8,14 +8,19 @@ class Pattern
 
     /** @var string|null */
     private $prefix;
+
     /** @var int */
     private $prefixLength;
+
     /** @var string|null */
     private $regex;
+
     /** @var array */
     private $parts;
+
     /** @var string[] part index => name */
     private $parameterMap;
+
     /** @var array */
     private $requirements;
 

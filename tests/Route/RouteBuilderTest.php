@@ -8,8 +8,10 @@ class RouteBuilderTest extends TestCase
 {
     /** @var Pattern */
     private $hostPatternMock;
+
     /** @var PathPattern */
     private $pathPatternMock;
+
     /** @var RouteBuilder */
     private $builder;
 

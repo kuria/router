@@ -14,8 +14,10 @@ class Router
 {
     /** @var Route[] name-indexed */
     private $routes = [];
+
     /** @var Url */
     private $baseUrl;
+
     /** @var RouteCollector|null */
     private $routeCollector;
 

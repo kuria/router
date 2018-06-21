@@ -11,6 +11,7 @@ class Match implements ResultInterface
 {
     /** @var RouteInterface */
     private $route;
+
     /** @var array */
     private $parameters;
 

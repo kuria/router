@@ -6,14 +6,19 @@ class Subject
 {
     /** @var string */
     public $method;
+
     /** @var string|null */
     public $scheme;
+
     /** @var string|null */
     public $host;
+
     /** @var int|null */
     public $port;
+
     /** @var string */
     public $path;
+
     /** @var array */
     public $query;
 
