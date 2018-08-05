@@ -61,7 +61,7 @@ class RouterTest extends TestCase
         $addedRoutes = [
             'baz' => $this->createMock(Route::class),
             'qux' => $this->createMock(Route::class),
-            'mlem' => $this->createMock(Route::class),
+            'quux' => $this->createMock(Route::class),
         ];
 
         $router->addRoutes($addedRoutes);
@@ -91,7 +91,7 @@ class RouterTest extends TestCase
         $collectedRoutes = [
             'baz' => $this->createMock(Route::class),
             'qux' => $this->createMock(Route::class),
-            'mlem' => $this->createMock(Route::class),
+            'quux' => $this->createMock(Route::class),
         ];
 
         $collectorMock->expects($this->once())
