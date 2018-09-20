@@ -2,6 +2,7 @@
 
 namespace Kuria\Router;
 
+use Kuria\DevMeta\Test;
 use Kuria\Router\Result\Match;
 use Kuria\Router\Result\MethodNotAllowed;
 use Kuria\Router\Result\NotFound;
@@ -11,9 +12,8 @@ use Kuria\Router\Route\Route;
 use Kuria\Router\Route\RouteBuilder;
 use Kuria\Router\Route\RouteCollector;
 use Kuria\Url\Url;
-use PHPUnit\Framework\TestCase;
 
-class RouterTest extends TestCase
+class RouterTest extends Test
 {
     protected function tearDown()
     {
@@ -138,7 +138,7 @@ class RouterTest extends TestCase
         $router = new Router();
         $router->setRoutes($routes);
 
-        $this->assertEquals($expectedResult, $router->match($method, $url));
+        $this->assertLooselyIdentical($expectedResult, $router->match($method, $url));
     }
 
     function provideRequestsToMatch(): array

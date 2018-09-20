@@ -2,11 +2,11 @@
 
 namespace Kuria\Router\Match;
 
+use Kuria\DevMeta\Test;
 use Kuria\Router\Result\Match;
 use Kuria\Router\Route\RouteInterface;
-use PHPUnit\Framework\TestCase;
 
-class MatchTest extends TestCase
+class MatchTest extends Test
 {
     function testShouldCreateResult()
     {

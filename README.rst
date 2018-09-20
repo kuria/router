@@ -3,8 +3,8 @@ Router
 
 HTTP request router.
 
-.. image:: https://travis-ci.org/kuria/router.svg?branch=master
-   :target: https://travis-ci.org/kuria/router
+.. image:: https://travis-ci.com/kuria/router.svg?branch=master
+   :target: https://travis-ci.com/kuria/router
 
 .. contents::
    :depth: 3

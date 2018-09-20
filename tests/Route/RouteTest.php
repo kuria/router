@@ -2,11 +2,11 @@
 
 namespace Kuria\Router\Route;
 
+use Kuria\DevMeta\Test;
 use Kuria\Router\Subject;
 use Kuria\Url\Url;
-use PHPUnit\Framework\TestCase;
 
-class RouteTest extends TestCase
+class RouteTest extends Test
 {
     function testShouldCreateRoute()
     {

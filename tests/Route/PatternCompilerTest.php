@@ -2,9 +2,9 @@
 
 namespace Kuria\Router\Route;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class PatternCompilerTest extends TestCase
+class PatternCompilerTest extends Test
 {
     /** @var PatternCompiler */
     private $compiler;
@@ -19,7 +19,7 @@ class PatternCompilerTest extends TestCase
      */
     function testShouldCompilePattern(array $args, Pattern $expectedPattern)
     {
-        $this->assertEquals($expectedPattern, $this->compiler->compilePattern(...$args));
+        $this->assertLooselyIdentical($expectedPattern, $this->compiler->compilePattern(...$args));
     }
 
     function providePatternsToCompile(): array
@@ -78,7 +78,7 @@ class PatternCompilerTest extends TestCase
      */
     function testShouldCompilePathPattern(array $args, PathPattern $expectedPattern)
     {
-        $this->assertEquals($expectedPattern, $this->compiler->compilePathPattern(...$args));
+        $this->assertLooselyIdentical($expectedPattern, $this->compiler->compilePathPattern(...$args));
     }
 
     function providePathPatternsToCompile(): array

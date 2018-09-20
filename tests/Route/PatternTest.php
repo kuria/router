@@ -2,9 +2,9 @@
 
 namespace Kuria\Router\Route;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class PatternTest extends TestCase
+class PatternTest extends Test
 {
     /**
      * @dataProvider providePatterns

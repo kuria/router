@@ -2,10 +2,10 @@
 
 namespace Kuria\Router\Match;
 
+use Kuria\DevMeta\Test;
 use Kuria\Router\Result\MethodNotAllowed;
-use PHPUnit\Framework\TestCase;
 
-class MethodNotAllowedTest extends TestCase
+class MethodNotAllowedTest extends Test
 {
     function testShouldCreateResult()
     {

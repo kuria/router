@@ -2,9 +2,9 @@
 
 namespace Kuria\Router\Route;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class RouteBuilderTest extends TestCase
+class RouteBuilderTest extends Test
 {
     /** @var Pattern */
     private $hostPatternMock;

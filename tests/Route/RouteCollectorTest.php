@@ -2,9 +2,9 @@
 
 namespace Kuria\Router\Route;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class RouteCollectorTest extends TestCase
+class RouteCollectorTest extends Test
 {
     /** @var RouteCollector */
     private $collector;

@@ -2,9 +2,9 @@
 
 namespace Kuria\Router;
 
-use PHPUnit\Framework\TestCase;
+use Kuria\DevMeta\Test;
 
-class SubjectTest extends TestCase
+class SubjectTest extends Test
 {
     function testShouldCreateSubject()
     {
