@@ -141,7 +141,7 @@ class RouterTest extends Test
         $this->assertLooselyIdentical($expectedResult, $router->match($method, $url));
     }
 
-    function provideRequestsToMatch(): array
+    function provideRequestsToMatch()
     {
         $neverMatchingRouteMock = $this->createConfiguredMock(Route::class, [
             'match' => null,
@@ -279,7 +279,7 @@ class RouterTest extends Test
         $router->match($method, $url);
     }
 
-    function provideExpectedSubjects(): array
+    function provideExpectedSubjects()
     {
         return [
             // baseUrl, method, url, expectedSubject

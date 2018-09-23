@@ -22,7 +22,7 @@ class PatternCompilerTest extends Test
         $this->assertLooselyIdentical($expectedPattern, $this->compiler->compilePattern(...$args));
     }
 
-    function providePatternsToCompile(): array
+    function providePatternsToCompile()
     {
         return [
             // args, expectedPattern
@@ -81,7 +81,7 @@ class PatternCompilerTest extends Test
         $this->assertLooselyIdentical($expectedPattern, $this->compiler->compilePathPattern(...$args));
     }
 
-    function providePathPatternsToCompile(): array
+    function providePathPatternsToCompile()
     {
         return [
             // args, expectedPattern

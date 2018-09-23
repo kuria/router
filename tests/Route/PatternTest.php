@@ -41,7 +41,7 @@ class PatternTest extends Test
         $this->assertSame($expectedDump, $pattern->dump(), "expected dump() to return \"{$expectedDump}\"");
     }
 
-    function providePatterns(): array
+    function providePatterns()
     {
         return [
             // patternAttrs, matchTestCases, generateTestCases, expectedDump

@@ -4,7 +4,7 @@ namespace Kuria\Router\Route;
 
 class PathPatternTest extends PatternTest
 {
-    function providePatterns(): array
+    function providePatterns()
     {
         $patterns = parent::providePatterns();
 

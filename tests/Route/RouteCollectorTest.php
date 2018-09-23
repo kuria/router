@@ -34,7 +34,7 @@ class RouteCollectorTest extends Test
         $this->assertEmpty($this->collector->getBuilders());
     }
 
-    function provideRouteBuilderFactoryMethods(): array
+    function provideRouteBuilderFactoryMethods()
     {
         return [
             // method, expectedAllowedMethods

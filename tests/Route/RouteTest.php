@@ -42,7 +42,7 @@ class RouteTest extends Test
         $this->assertSame($expectedResult, $route->match($subject, $ignoreMethod));
     }
 
-    function provideRoutesToMatch(): array
+    function provideRoutesToMatch()
     {
         $successfulMatch = [
             'serverId' => '1',
@@ -136,7 +136,7 @@ class RouteTest extends Test
         $this->assertSame($expectedUrl, $route->generate($baseUrl, $parameters)->build());
     }
 
-    function provideRoutesForGeneration(): array
+    function provideRoutesForGeneration()
     {
         $baseUrl = Url::parse('http://localhost:9090/public');
         $emptyBaseUrl = new Url();
@@ -228,7 +228,7 @@ class RouteTest extends Test
         $this->assertSame($expectedDump, $route->dump());
     }
 
-    function provideRoutesToDump(): array
+    function provideRoutesToDump()
     {
         return [
             // route, expectedDump
