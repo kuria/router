@@ -109,7 +109,7 @@ class PatternCompiler
             } else {
                 // other characters
                 if (
-                    '(' === $regex[$i]
+                    $regex[$i] === '('
                     && !$escaped
                     && ($next = $i + 1) < $length
                     && $regex[$next] !== '?'
