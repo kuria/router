@@ -6,57 +6,51 @@ use Kuria\DevMeta\Test;
 use Kuria\Router\Result\Match;
 use Kuria\Router\Result\MethodNotAllowed;
 use Kuria\Router\Result\NotFound;
-use Kuria\Router\Result\ResultInterface;
+use Kuria\Router\Result\Result;
 use Kuria\Router\Route\PatternCompiler;
 use Kuria\Router\Route\Route;
 use Kuria\Router\Route\RouteBuilder;
 use Kuria\Router\Route\RouteCollector;
 use Kuria\Url\Url;
 
+/**
+ * @covers \Kuria\Router\Router
+ */
 class RouterTest extends Test
 {
-    protected function tearDown()
+    /** @var Router */
+    private $router;
+
+    protected function setUp()
     {
-        Url::clearCurrentUrlCache();
+        $this->router = new Router();
     }
 
-    function testShouldCreateRouterWithDefaultBaseUrl()
+    function testShouldConfigureDefaultContext()
     {
-        Url::setCurrent(Url::parse('https://user:pwd@example.com:8080/foo?bar=baz#fragment'));
+        $this->assertNull($this->router->getDefaultContext());
 
-        $router = new Router();
+        $context = new Context('https', 'foo', 9090, '');
+        $this->router->setDefaultContext($context);
 
-        $this->assertSame('https://example.com:8080', $router->getBaseUrl()->build());
-    }
-
-    function testShouldCreateRouterWithCustomBaseUrl()
-    {
-        $baseUrl = new Url();
-        $router = new Router($baseUrl);
-
-        $this->assertSame($baseUrl, $router->getBaseUrl());
-
-        $router->setBaseUrl($newBaseUrl = new Url());
-        $this->assertSame($newBaseUrl, $router->getBaseUrl());
+        $this->assertSame($context, $this->router->getDefaultContext());
     }
 
     function testShouldConfigureRoutes()
     {
-        $router = new Router();
-
         $setRoutes = [
             'foo' => $this->createMock(Route::class),
             'bar' => $this->createMock(Route::class),
             'baz' => $this->createMock(Route::class),
         ];
 
-        $router->setRoutes($setRoutes);
+        $this->router->setRoutes($setRoutes);
 
-        $this->assertSame($setRoutes, $router->getRoutes());
-        $this->assertTrue($router->hasRoute('foo'));
-        $this->assertTrue($router->hasRoute('bar'));
-        $this->assertTrue($router->hasRoute('baz'));
-        $this->assertFalse($router->hasRoute('nonexistent'));
+        $this->assertSame($setRoutes, $this->router->getRoutes());
+        $this->assertTrue($this->router->hasRoute('foo'));
+        $this->assertTrue($this->router->hasRoute('bar'));
+        $this->assertTrue($this->router->hasRoute('baz'));
+        $this->assertFalse($this->router->hasRoute('nonexistent'));
 
         $addedRoutes = [
             'baz' => $this->createMock(Route::class),
@@ -64,24 +58,22 @@ class RouterTest extends Test
             'quux' => $this->createMock(Route::class),
         ];
 
-        $router->addRoutes($addedRoutes);
-        $this->assertSame($addedRoutes + $setRoutes, $router->getRoutes());
+        $this->router->addRoutes($addedRoutes);
+        $this->assertSame(array_merge($setRoutes, $addedRoutes), $this->router->getRoutes());
 
-        $router->setRoutes([]);
-        $this->assertSame([], $router->getRoutes());
+        $this->router->setRoutes([]);
+        $this->assertSame([], $this->router->getRoutes());
     }
 
     function testShouldConfigureRoutesUsingCustomCollector()
     {
-        $router = new Router();
-
         $setRoutes = [
             'foo' => $this->createMock(Route::class),
             'bar' => $this->createMock(Route::class),
             'baz' => $this->createMock(Route::class),
         ];
 
-        $router->setRoutes($setRoutes);
+        $this->router->setRoutes($setRoutes);
 
         $collectorMock = $this->createMock(RouteCollector::class);
 
@@ -98,30 +90,28 @@ class RouterTest extends Test
             ->method('getRoutes')
             ->willReturn($collectedRoutes);
 
-        $router->setRouteCollector($collectorMock);
+        $this->router->setRouteCollector($collectorMock);
 
         $callbackCalled = false;
 
-        $router->defineRoutes(function ($collector) use ($collectorMock, &$callbackCalled) {
+        $this->router->defineRoutes(function ($collector) use ($collectorMock, &$callbackCalled) {
             $this->assertFalse($callbackCalled);
             $this->assertSame($collectorMock, $collector);
             $callbackCalled = true;
         });
 
         $this->assertTrue($callbackCalled);
-        $this->assertSame($collectedRoutes + $setRoutes, $router->getRoutes());
+        $this->assertSame(array_merge($setRoutes, $collectedRoutes), $this->router->getRoutes());
     }
 
     function testShouldDefineRoutes()
     {
-        $router = new Router();
-
-        $router->defineRoutes(function (RouteCollector $c) {
+        $this->router->defineRoutes(function (RouteCollector $c) {
             $c->get('index')->path('/');
             $c->post('login')->path('/login');
         });
 
-        $routes = $router->getRoutes();
+        $routes = $this->router->getRoutes();
 
         $this->assertCount(2, $routes);
         $this->assertArrayHasKey('index', $routes);
@@ -131,17 +121,42 @@ class RouterTest extends Test
     }
 
     /**
-     * @dataProvider provideRequestsToMatch
+     * @dataProvider provideRoutesToMatch
      */
-    function testShouldMatch(array $routes, string $method, Url $url, ResultInterface $expectedResult)
+    function testShouldMatch(array $routes, Subject $subject, Result $expectedResult)
     {
-        $router = new Router();
-        $router->setRoutes($routes);
+        $this->router->setRoutes($routes);
 
-        $this->assertLooselyIdentical($expectedResult, $router->match($method, $url));
+        $this->assertLooselyIdentical($expectedResult, $this->router->match($subject));
     }
 
-    function provideRequestsToMatch()
+    /**
+     * @dataProvider provideRoutesToMatch
+     */
+    function testShouldMatchPath(array $routes, Subject $subject, Result $expectedResult)
+    {
+        $this->router->setRoutes($routes);
+
+        $context = new Context($subject->scheme, $subject->host, $subject->port, '/app');
+
+        $this->assertLooselyIdentical(
+            $expectedResult,
+            $this->router->matchPath($subject->method, $subject->path, $context),
+            false,
+            'should match path using given context'
+        );
+
+        $this->router->setDefaultContext($context);
+
+        $this->assertLooselyIdentical(
+            $expectedResult,
+            $this->router->matchPath($subject->method, $subject->path),
+            false,
+            'should match path using default context'
+        );
+    }
+
+    function provideRoutesToMatch()
     {
         $neverMatchingRouteMock = $this->createConfiguredMock(Route::class, [
             'match' => null,
@@ -157,184 +172,177 @@ class RouterTest extends Test
 
         $compiler = new PatternCompiler();
 
-        $fooHeadRequestRoute = (new RouteBuilder($compiler, 'foo_head'))
-            ->allowedMethods(['HEAD'])
+        $headRoute = (new RouteBuilder($compiler, 'head_route'))
+            ->methods(['HEAD'])
             ->path('/foo')
-            ->defaults(['foo_head' => 'yes'])
+            ->defaults(['head_route' => 'yes'])
             ->build();
 
-        $fooGetRequestRoute = (new RouteBuilder($compiler, 'foo_get'))
-            ->allowedMethods(['GET'])
+        $getRoute = (new RouteBuilder($compiler, 'get_route'))
+            ->methods(['GET'])
             ->path('/foo')
-            ->defaults(['foo_get' => 'yes'])
+            ->defaults(['get_route' => 'yes'])
             ->build();
 
-        $fooPostPutRequestRoute = (new RouteBuilder($compiler, 'foo_post_put'))
-            ->allowedMethods(['POST', 'PUT'])
+        $postPutRoute = (new RouteBuilder($compiler, 'post_put_route'))
+            ->methods(['POST', 'PUT'])
             ->path('/foo')
-            ->defaults(['foo_post_put' => 'yes'])
+            ->defaults(['post_put_route' => 'yes'])
             ->build();
 
-        $fooRoutes = [$fooHeadRequestRoute, $fooGetRequestRoute, $fooPostPutRequestRoute];
-
-        $fooUrl = Url::parse('/foo');
-        $barUrl = Url::parse('/bar');
+        $routes = [$headRoute, $getRoute, $postPutRoute];
 
         return [
-            // routes, method, url, expectedResult
+            // routes, subject, expectedResult
             'no routes' => [
                 [],
-                'GET',
-                $fooUrl,
-                new NotFound(),
+                $subject = new Subject('GET', 'http', 'example.com', 80, '/'),
+                new NotFound($subject),
             ],
 
             'no matching routes' => [
                 [$neverMatchingRouteMock, $neverMatchingRouteMock],
-                'GET',
-                $fooUrl,
-                new NotFound(),
+                $subject = new Subject('GET', 'http', 'example.com', 80, '/'),
+                new NotFound($subject),
             ],
 
             'match routes in order' => [
                 [$neverMatchingRouteMock, $alwaysMatchingRouteMock, $alwaysMatchingRouteMockB],
-                'GET',
-                $fooUrl,
-                new Match($alwaysMatchingRouteMock, ['always_match' => 'yes']),
+                $subject = new Subject('GET', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $alwaysMatchingRouteMock, ['always_match' => 'yes']),
             ],
 
             'match routes in different order' => [
                 [$neverMatchingRouteMock, $alwaysMatchingRouteMockB, $alwaysMatchingRouteMock],
-                'GET',
-                $fooUrl,
-                new Match($alwaysMatchingRouteMockB, ['always_match_b' => 'yes']),
+                $subject = new Subject('GET', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $alwaysMatchingRouteMockB, ['always_match_b' => 'yes']),
             ],
 
             'method not allowed' => [
-                $fooRoutes,
-                'PATCH',
-                $fooUrl,
-                new MethodNotAllowed(['HEAD', 'GET', 'POST', 'PUT']),
+                $routes,
+                $subject = new Subject('PATCH', 'http', 'example.com', 80, '/foo'),
+                new MethodNotAllowed($subject, ['HEAD', 'GET', 'POST', 'PUT']),
             ],
 
             'no matching method or path' => [
-                $fooRoutes,
-                'PATCH',
-                $barUrl,
-                new NotFound(),
+                $routes,
+                $subject = new Subject('PATCH', 'http', 'example.com', 80, '/bar'),
+                new NotFound($subject),
             ],
 
             'match HEAD route' => [
-                [$fooGetRequestRoute, $fooHeadRequestRoute],
-                'HEAD',
-                $fooUrl,
-                new Match($fooHeadRequestRoute, ['foo_head' => 'yes']),
+                [$getRoute, $headRoute],
+                $subject = new Subject('HEAD', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $headRoute, ['head_route' => 'yes']),
             ],
 
             'match GET route' => [
-                $fooRoutes,
-                'GET',
-                $fooUrl,
-                new Match($fooGetRequestRoute, ['foo_get' => 'yes']),
+                $routes,
+                $subject = new Subject('GET', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $getRoute, ['get_route' => 'yes']),
             ],
 
             'match POST route' => [
-                $fooRoutes,
-                'POST',
-                $fooUrl,
-                new Match($fooPostPutRequestRoute, ['foo_post_put' => 'yes']),
+                $routes,
+                $subject = new Subject('POST', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $postPutRoute, ['post_put_route' => 'yes']),
             ],
 
             'match PUT route' => [
-                $fooRoutes,
-                'PUT',
-                $fooUrl,
-                new Match($fooPostPutRequestRoute, ['foo_post_put' => 'yes']),
+                $routes,
+                $subject = new Subject('PUT', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $postPutRoute, ['post_put_route' => 'yes']),
             ],
 
             'match GET route as fallback from HEAD' => [
-                [$neverMatchingRouteMock, $fooGetRequestRoute],
-                'HEAD',
-                $fooUrl,
-                new Match($fooGetRequestRoute, ['foo_get' => 'yes']),
+                [$neverMatchingRouteMock, $getRoute],
+                $subject = new Subject('HEAD', 'http', 'example.com', 80, '/foo'),
+                new Match($subject, $getRoute, ['get_route' => 'yes']),
             ],
         ];
     }
 
-    /**
-     * @dataProvider provideExpectedSubjects
-     */
-    function testShouldCreateSubjectForMatching(Url $baseUrl, string $method, Url $url, Subject $expectedSubject)
+    function testShouldThrowExceptionWhenMatchingPathWithNoContext()
     {
-        $router = new Router($baseUrl);
+        $this->router->setRoutes(['foo' => $this->createMock(Route::class)]);
 
-        $routeMock = $this->createMock(Route::class);
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Default context is not defined');
 
-        $routeMock->expects($this->atLeastOnce())
-            ->method('match')
-            ->with($expectedSubject)
-            ->willReturn([]);
-
-        $router->setRoutes(['mock' => $routeMock]);
-        $router->match($method, $url);
-    }
-
-    function provideExpectedSubjects()
-    {
-        return [
-            // baseUrl, method, url, expectedSubject
-            'should remove base url path prefix' => [
-                Url::parse('https://example.com/public'),
-                'GET',
-                Url::parse('https://example.com/public/about'),
-                new Subject('GET', 'https', 'example.com', null, '/about', []),
-            ],
-
-            'should not remove non-matching base url path prefix' => [
-                Url::parse('https://example.com/public'),
-                'GET',
-                Url::parse('https://example.com/foo'),
-                new Subject('GET', 'https', 'example.com', null, '/foo', []),
-            ],
-
-            'should decode path and query' => [
-                new Url(),
-                'POST',
-                Url::parse('http://localhost:8080/%C5%BElu%C5%A5ou%C4%8Dk%C3%BDk%C5%AF%C5%88%40example?foo=bar%20baz'),
-                new Subject('POST', 'http', 'localhost', 8080, '/žluťoučkýkůň@example', ['foo' => 'bar baz']),
-            ],
-        ];
+        $this->router->matchPath('GET', '/foo');
     }
 
     function testShouldGenerate()
     {
-        $baseUrl = new Url();
-        $router = new Router($baseUrl);
-
+        $context = new Context('http', 'example.com', 8080, '/app');
         $generatedUrl = new Url();
 
-        $fooRouteMock = $this->createMock(Route::class);
-        $fooRouteMock->expects($this->once())
+        $routeMock = $this->createMock(Route::class);
+        $routeMock->expects($this->exactly(2))
             ->method('generate')
             ->with(
-                $this->identicalTo($baseUrl),
+                $this->identicalTo($context),
                 $this->identicalTo(['a' => 123, 'b' => '456']),
                 $this->isTrue()
             )
             ->willReturn($generatedUrl);
 
-        $router->setRoutes(['foo' => $fooRouteMock]);
+        $this->router->setRoutes(['foo' => $routeMock]);
 
-        $this->assertSame($generatedUrl, $router->generate('foo', ['a' => 123, 'b' => '456']));
+        $this->assertSame(
+            $generatedUrl,
+            $this->router->generate('foo', ['a' => 123, 'b' => '456'], true, $context),
+            'should generate URL using given context'
+        );
+
+        $this->router->setDefaultContext($context);
+
+        $this->assertSame(
+            $generatedUrl,
+            $this->router->generate('foo', ['a' => 123, 'b' => '456']),
+            'should generate URL using default context'
+        );
+    }
+
+    function testShouldGenerateWithoutCheckingRequirements()
+    {
+        $context = new Context('http', 'example.com', 8080, '/app');
+        $generatedUrl = new Url();
+
+        $routeMock = $this->createMock(Route::class);
+        $routeMock->expects($this->once())
+            ->method('generate')
+            ->with(
+                $this->identicalTo($context),
+                $this->identicalTo(['a' => 123, 'b' => '456']),
+                $this->isFalse()
+            )
+            ->willReturn($generatedUrl);
+
+        $this->router->setRoutes(['foo' => $routeMock]);
+
+        $this->assertSame(
+            $generatedUrl,
+            $this->router->generate('foo', ['a' => 123, 'b' => '456'], false, $context),
+            'should generate URL using default context'
+        );
     }
 
     function testShouldThrowExceptionWhenGeneratingUrlForNonexistentRoute()
     {
-        $router = new Router();
-
         $this->expectException(\OutOfBoundsException::class);
         $this->expectExceptionMessage('There is no route named "nonexistent"');
 
-        $router->generate('nonexistent');
+        $this->router->generate('nonexistent');
+    }
+
+    function testShouldThrowExceptionWhenGeneratingUrlWithNoContext()
+    {
+        $this->router->setRoutes(['foo' => $this->createMock(Route::class)]);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Default context is not defined');
+
+        $this->router->generate('foo', []);
     }
 }

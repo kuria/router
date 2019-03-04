@@ -23,10 +23,10 @@ class RouteBuilder
     private $name;
 
     /** @var string[]|null */
-    private $allowedMethods;
+    private $methods;
 
     /** @var string|null */
-    private $allowedScheme;
+    private $scheme;
 
     /** @var string|null */
     private $hostPattern;
@@ -80,21 +80,21 @@ class RouteBuilder
      *
      * @return string[]|null
      */
-    function getAllowedMethods(): ?array
+    function getMethods(): ?array
     {
-        return $this->allowedMethods;
+        return $this->methods;
     }
 
     /**
      * Match request methods
      *
-     * @param string[]|null $allowedMethods
+     * @param string[]|null $methods
      * @throws \OutOfBoundsException if any of the specified methods is not valid
      */
-    function allowedMethods(?array $allowedMethods)
+    function methods(?array $methods)
     {
-        if ($allowedMethods) {
-            foreach ($allowedMethods as $method) {
+        if ($methods) {
+            foreach ($methods as $method) {
                 if (!isset(static::VALID_METHOD_MAP[$method])) {
                     throw new \OutOfBoundsException(sprintf(
                         'Invalid method "%s", valid methods are: %s',
@@ -105,7 +105,27 @@ class RouteBuilder
             }
         }
 
-        $this->allowedMethods = $allowedMethods;
+        $this->methods = $methods;
+
+        return $this;
+    }
+
+    /**
+     * Get configured request scheme
+     */
+    function getScheme(): ?string
+    {
+        return $this->scheme;
+    }
+
+    /**
+     * Match a scheme
+     *
+     * @return $this
+     */
+    function scheme(?string $scheme): self
+    {
+        $this->scheme = $scheme;
 
         return $this;
     }
@@ -285,8 +305,8 @@ class RouteBuilder
 
         return new Route(
             $this->name,
-            $this->allowedMethods,
-            $this->allowedScheme,
+            $this->methods,
+            $this->scheme,
             $this->hostPattern !== null
                 ? $this->patternCompiler->compilePattern($this->hostPattern, $this->requirements)
                 : null,

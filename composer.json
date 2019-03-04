@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": ">=7.1",
-        "kuria/url": "^3.1"
+        "kuria/url": "dev-master as 5.0"
     },
     "require-dev": {
         "ext-json": "*",

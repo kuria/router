@@ -14,10 +14,9 @@ Features
 ********
 
 - defining routes using OO builders
-- matching URL parts (method, scheme, host, port, path)
-- considering a base URL when matching or generating URLs
+- matching request attributes (method, scheme, host, port, path)
 - regex-driven host and path patterns
-- generating URLs (both absolute and relative)
+- generating URLs
 
 
 Requirements
@@ -32,20 +31,33 @@ Usage
 Routing incoming requests
 =========================
 
-Simplified example:
+Simple ``PATH_INFO`` routing
+----------------------------
+
+Simple routing using ``$_SERVER['PATH_INFO']`` and hardcoded context information.
+
+Example URL: ``http://localhost/index.php/page/index``
 
 .. code:: php
 
    <?php
 
+   use Kuria\Router\Context;
    use Kuria\Router\Result\Match;
    use Kuria\Router\Result\MethodNotAllowed;
    use Kuria\Router\Route\RouteCollector;
    use Kuria\Router\Router;
-   use Kuria\Url\Url;
 
    // create router
    $router = new Router();
+
+   // define default context
+   $router->setDefaultContext(new Context(
+       'http',         // scheme
+       'localhost',    // host
+       80,             // port
+       '/index.php'    // base path
+   ));
 
    // define routes
    $router->defineRoutes(function (RouteCollector $c) {
@@ -53,77 +65,99 @@ Simplified example:
        $c->get('page')->path('/page/{name}');
 
        $c->addGroup('user_', '/user', function (RouteCollector $c) {
-           $c->add('register')->allowedMethods(['GET', 'POST'])->path('/register');
-           $c->add('login')->allowedMethods(['GET', 'POST'])->path('/login');
+           $c->add('register')->methods(['GET', 'POST'])->path('/register');
+           $c->add('login')->methods(['GET', 'POST'])->path('/login');
            $c->get('logout')->path('/logout');
            $c->get('profile')->path('/profile/{username}');
        });
    });
 
    // match current request
-   $result = $router->match($_SERVER['REQUEST_METHOD'], Url::current());
+   $path = rawurldecode($_SERVER['PATH_INFO'] ?? '/');
+   $result = $router->matchPath($_SERVER['REQUEST_METHOD'], $path);
 
    // handle the result
    if ($result instanceof Match) {
        // success
        // do something with the matched route and parameters
-       echo 'Matched route ', $result->getRoute()->getName(), "\n";
-       echo 'Parameters: ', print_r($result->getParameters(), true);
+       echo 'Matched path: ', $result->getSubject()->path, "\n";
+       echo 'Matched route: ', $result->getRoute()->getName(), "\n";
+       echo 'Parameters: ', print_r($result->getParameters(), true), "\n";
    } elseif ($result instanceof MethodNotAllowed) {
        // method not allowed
        http_response_code(405);
        header('Allow: ' . implode(', ', $result->getAllowedMethods()));
-       echo 'Method not allowed :(';
+       echo "Method not allowed :(\n";
    } else {
        // not found
        http_response_code(404);
-       echo 'Not found :(';
+       echo "Not found :(\n";
    }
 
 
-Base URL explained
-==================
+Dynamic routing using kuria/request-info
+----------------------------------------
 
-The base URL is used when matching the path or generating URLs (to prefix the path
-and fill in missing URL parts that are not defined by the route).
+Context and path info can be auto-detected using the `kuria/request-info <https://github.com/kuria/request-info>`_ library.
 
-
-Default base URL
-----------------
-
-By default, root of the current URL (that is current scheme + host + port) will be used
-as the base URL. At ``https://example.com:80/page/about``, the default base URL would be
-``https://example.com:80``.
-
-
-Custom base URL
----------------
-
-Custom base URL can be specified through the ``Router`` constructor argument or at
-a later point using the ``setBaseUrl()`` setter. It is also possible to modify
-the default base URL returned by ``getBaseUrl()``.
+It supports both simple path info and rewritten URLs and can extract information from trusted proxy headers.
 
 .. code:: php
 
    <?php
 
+   use Kuria\RequestInfo\RequestInfo;
+   use Kuria\Router\Context;
+   use Kuria\Router\Result\Match;
+   use Kuria\Router\Result\MethodNotAllowed;
+   use Kuria\Router\Route\RouteCollector;
    use Kuria\Router\Router;
-   use Kuria\Url\Url;
 
-   // using constructor argument
-   $router = new Router(Url::parse('http://localhost:8080/projects/example'));
+   // create router
+   $router = new Router();
 
-   // using the setter
-   $router->setBaseUrl(Url::parse('http://localhost:8080/projects/example'));
+   // define default context
+   $router->setDefaultContext(new Context(
+       RequestInfo::getScheme(),
+       RequestInfo::getHost(),
+       RequestInfo::getPort(),
+       RequestInfo::getBasePath()
+   ));
 
-   // modifying existing base URL
-   $router->getBaseUrl()->setPath('/projects/example');
+   // define routes
+   $router->defineRoutes(function (RouteCollector $c) {
+       $c->get('index')->path('/');
+       $c->get('page')->path('/page/{name}');
 
-.. NOTE::
+       $c->addGroup('user_', '/user', function (RouteCollector $c) {
+           $c->add('register')->methods(['GET', 'POST'])->path('/register');
+           $c->add('login')->methods(['GET', 'POST'])->path('/login');
+           $c->get('logout')->path('/logout');
+           $c->get('profile')->path('/profile/{username}');
+       });
+   });
 
-   The base URL should NOT contain authentication, query parameters or fragment.
+   // match current request
+   $path = rawurldecode(RequestInfo::getPathInfo());
+   $result = $router->matchPath(RequestInfo::getMethod(), $path !== '' ? $path : '/');
 
-   The base URL path should NOT end with a forward slash.
+   // handle the result
+   if ($result instanceof Match) {
+       // success
+       // do something with the matched route and parameters
+       echo 'Matched path: ', $result->getSubject()->path, "\n";
+       echo 'Matched route: ', $result->getRoute()->getName(), "\n";
+       echo 'Parameters: ', print_r($result->getParameters(), true), "\n";
+   } elseif ($result instanceof MethodNotAllowed) {
+       // method not allowed
+       http_response_code(405);
+       header('Allow: ' . implode(', ', $result->getAllowedMethods()));
+       echo "Method not allowed :(\n";
+   } else {
+       // not found
+       http_response_code(404);
+       echo "Not found :(\n";
+   }
 
 
 Defining routes
@@ -233,8 +267,8 @@ To define several routes that share a common path and name prefix, use ``addGrou
 
    $router->defineRoutes(function (RouteCollector $c) {
        $c->addGroup('user_', '/user', function (RouteCollector $c) {
-           $c->add('register')->allowedMethods(['GET', 'POST'])->path('/register');
-           $c->add('login')->allowedMethods(['GET', 'POST'])->path('/login');
+           $c->add('register')->methods(['GET', 'POST'])->path('/register');
+           $c->add('login')->methods(['GET', 'POST'])->path('/login');
            $c->get('logout')->path('/logout');
            $c->get('profile')->path('/profile/{username}');
        });
@@ -260,7 +294,8 @@ Route builder API
 
 ``RouteBuilder`` provides a fluent interface to configure a single route.
 
-- ``allowedMethods($allowedMethods): self`` - match request methods (must be uppercase, e.g. ``GET``, ``POST``, etc.)
+- ``methods($allowedMethods): self`` - match request methods (must be uppercase, e.g. ``GET``, ``POST``, etc.)
+- ``scheme($scheme): self`` - match a scheme (e.g. ``http`` or ``https``)
 - ``host($hostPattern): self`` - match host name pattern, see `Route patterns`_
 - ``prependHost($hostPatternPrefix): self`` - add a prefix to the host name pattern
 - ``appendHost($hostPatternPrefix): self`` - add a suffix to the host name pattern
@@ -281,7 +316,8 @@ Example call:
    $router->defineRoutes(function (RouteCollector $c) {
        // $c->add() returns a RouteBuilder
        $c->add('user_profile_page')
-           ->allowedMethods(['GET', 'POST'])
+           ->methods(['GET', 'POST'])
+           ->scheme('https')
            ->host('{username}.example.com')
            ->port(8080)
            ->path('/{page}')
@@ -303,8 +339,7 @@ Placeholder syntax is the following:
 
 Parameter name can consist of any characters with the exception of ``}``.
 
-These parameters are matched when matching a route and are available in the result.
-See `Matching URLs`_.
+These parameters will be available in the matching result. See `Matching routes`_.
 
 .. NOTE::
 
@@ -407,29 +442,23 @@ library, but you can any other library or code.
    cannot be cached.
 
 
-Matching URLs
-=============
+Matching routes
+===============
 
-After routes have been defined, the router can be used to match URLs.
+After routes have been defined, the router can be used to route a request.
 
 See example code in `Routing incoming requests`_.
 
-.. NOTE::
 
-   The base URL path is removed from the URL before matching.
+Using ``Router->match()/matchPath()``
+-------------------------------------
 
-   See `Base URL explained`_.
-
-
-Using ``Router->match()``
--------------------------
-
-The ``Router->match()`` method returns an instance of ``Kuria\Router\Result\ResultInterface``,
+Both ``Router->match()`` and ``Router->matchPath()`` return an instance of ``Kuria\Router\Result\Result``,
 which may be one of the following:
 
 
 ``Kuria\Router\Result\Match``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A route has been matched successfully. The ``Match`` object provides access to the
 matched route and parameters.
@@ -441,9 +470,9 @@ It us up to the application to do something with this information.
    <?php
 
    use Kuria\Router\Result\Match;
-   use Kuria\Url\Url;
+   use Kuria\Router\Router;
 
-   $result = $router->match('GET', Url::parse('/user/profile/bob'));
+   $result = $router->matchPath('GET', '/user/profile/bob');
 
    if ($result instanceof Match) {
        echo 'Matched route is ', $result->getRoute()->getName(), "\n";
@@ -479,9 +508,8 @@ header specifying the allowed methods.
    <?php
 
    use Kuria\Router\Result\MethodNotAllowed;
-   use Kuria\Url\Url;
 
-   $result = $router->match('POST', Url::parse('/user/logout'));
+   $result = $router->matchPath('POST', '/user/logout');
 
    if ($result instanceof MethodNotAllowed) {
        http_response_code(405);
@@ -490,7 +518,7 @@ header specifying the allowed methods.
 
 
 ``Kuria\Router\Result\NotFound``
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 No routes have matched.
 
@@ -501,9 +529,8 @@ A proper response in this case is HTTP 404 Not Found.
    <?php
 
    use Kuria\Router\Result\NotFound;
-   use Kuria\Url\Url;
 
-   $result = $router->match('GET', Url::parse('/nonexistent'));
+   $result = $router->matchPath('GET', '/nonexistent');
 
    if ($result instanceof NotFound) {
        http_response_code(404);
@@ -540,10 +567,9 @@ and parameters and return an instance of ``Kuria\Url\Url``.
   instead (see `Route defaults`_)
 - any extra parameters (that are not present in the host or path pattern)
   will be added as query parameters instead
-- if the route doesn't specify some URL attributes (such as scheme, host
-  or the port), those attributes will be taken from the base URL
-  (see `Base URL explained`_)
-- the final path will be prefixed by the base URL's path
+- if the scheme, host or port is different from the context, the URL's preferred
+  format will be ``Url::ABSOLUTE``; if they are all the same or undefined, it will
+  be ``Url::RELATIVE`` (See `Router context`_)
 
 .. code:: php
 
@@ -558,23 +584,60 @@ Output:
 
 ::
 
-  string(30) "http://localhost/user/register"
-  string(47) "http://localhost/user/profile/bob?extra=example"
+  string(14) "/user/register"
+  string(31) "/user/profile/bob?extra=example"
 
-If you wish to get relative URLs instead, use ``buildRelative()``:
+If you wish to get absolute URLs regardless of the context, use ``buildAbsolute()``:
 
 .. code:: php
 
    <?php
 
    var_dump(
-       $router->generate('index')->buildRelative(),
-       $router->generate('page', ['name' => 'contact'])->buildRelative()
+       $router->generate('index')->buildAbsolute(),
+       $router->generate('page', ['name' => 'contact'])->buildAbsolute()
    );
 
 Output:
 
 ::
 
-  string(1) "/"
-  string(13) "/page/contact"
+  string(17) "http://localhost/"
+  string(29) "http://localhost/page/contact"
+
+
+Router context
+==============
+
+Router context is used to fill in missing information (scheme, host, port, etc.) when generating
+URLs or matching paths.
+
+It can be specified in two ways:
+
+
+Using ``Router->setDefaultContext()``
+-------------------------------------
+
+This method defines a default context to be used the none is given.
+
+.. code:: php
+
+   <?php
+
+   use Kuria\Router\Context;
+
+   $router->setDefaultContext(new Context(
+       'https',       // scheme
+       'example.com', // host
+       443,           // port
+       ''             // basePath
+   ));
+
+
+Using the ``$context`` parameter
+--------------------------------
+
+``Router->matchPath()`` and ``Router->generate()`` accept an optional ``$context`` argument.
+
+If no context is given, the default context will be used instead. If no default context
+is specified, an exception will be thrown.

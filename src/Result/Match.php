@@ -2,26 +2,29 @@
 
 namespace Kuria\Router\Result;
 
-use Kuria\Router\Route\RouteInterface;
+use Kuria\Router\Route\Route;
+use Kuria\Router\Subject;
 
 /**
  * Successful route match
  */
-class Match implements ResultInterface
+class Match extends Result
 {
-    /** @var RouteInterface */
+    /** @var Route */
     private $route;
 
     /** @var array */
     private $parameters;
 
-    function __construct(RouteInterface $route, array $parameters)
+    function __construct(Subject $subject, Route $route, array $parameters)
     {
+        parent::__construct($subject);
+
         $this->route = $route;
         $this->parameters = $parameters;
     }
 
-    function getRoute(): RouteInterface
+    function getRoute(): Route
     {
         return $this->route;
     }

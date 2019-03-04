@@ -2,19 +2,20 @@
 
 namespace Kuria\Router\Route;
 
+use Kuria\Router\Context;
 use Kuria\Router\Subject;
 use Kuria\Url\Url;
 
-class Route implements RouteInterface
+class Route
 {
     /** @var string */
     private $name;
 
     /** @var array|null */
-    private $allowedMethodMap;
+    private $methodMap;
 
     /** @var string|null */
-    private $allowedScheme;
+    private $scheme;
 
     /** @var Pattern|null */
     private $hostPattern;
@@ -36,8 +37,8 @@ class Route implements RouteInterface
 
     function __construct(
         string $name,
-        ?array $allowedMethods,
-        ?string $allowedScheme,
+        ?array $methods,
+        ?string $scheme,
         ?Pattern $hostPattern,
         ?int $port,
         PathPattern $pathPattern,
@@ -45,15 +46,15 @@ class Route implements RouteInterface
         array $attributes = []
     ) {
         $this->name = $name;
-        $this->allowedMethodMap = $allowedMethods !== null ? array_flip($allowedMethods) : null;
-        $this->allowedScheme = $allowedScheme;
+        $this->methodMap = $methods !== null ? array_flip($methods) : null;
+        $this->scheme = $scheme;
         $this->hostPattern = $hostPattern;
         $this->port = $port;
         $this->pathPattern = $pathPattern;
         $this->defaults = $defaults;
         $this->attributes = $attributes;
 
-        $this->knownParamMap = array_flip($pathPattern->getParameters());;
+        $this->knownParamMap = array_flip($pathPattern->getParameters());
 
         if ($hostPattern) {
             $this->knownParamMap += array_flip($hostPattern->getParameters());
@@ -65,14 +66,17 @@ class Route implements RouteInterface
         return $this->name;
     }
 
-    function getAllowedMethods(): ?array
+    /**
+     * @return string[]|null
+     */
+    function getMethods(): ?array
     {
-        return $this->allowedMethodMap !== null ? array_keys($this->allowedMethodMap) : null;
+        return $this->methodMap !== null ? array_keys($this->methodMap) : null;
     }
 
-    function getAllowedScheme(): ?string
+    function getScheme(): ?string
     {
-        return $this->allowedScheme;
+        return $this->scheme;
     }
 
     function getHostPattern(): ?Pattern
@@ -85,7 +89,7 @@ class Route implements RouteInterface
         return $this->port;
     }
 
-    function getPathPattern(): Pattern
+    function getPathPattern(): PathPattern
     {
         return $this->pathPattern;
     }
@@ -100,15 +104,20 @@ class Route implements RouteInterface
         return $this->attributes;
     }
 
+    /**
+     * Attempt to match the given subject
+     *
+     * Returns match attributes or NULL on failure.
+     */
     function match(Subject $subject, bool $ignoreMethod = false): ?array
     {
         if (
             // method
-            !$ignoreMethod && $this->allowedMethodMap !== null && !isset($this->allowedMethodMap[$subject->method])
+            !$ignoreMethod && $this->methodMap !== null && !isset($this->methodMap[$subject->method])
             // scheme
-            || $this->allowedScheme !== null && $subject->scheme !== $this->allowedScheme
+            || $this->scheme !== null && $subject->scheme !== $this->scheme
             // host
-            || $this->hostPattern !== null && ($subject->host === null || ($hostAttrs = $this->hostPattern->match($subject->host)) === null)
+            || $this->hostPattern !== null && ($hostAttrs = $this->hostPattern->match($subject->host)) === null
             // port
             || $this->port !== null && $subject->port !== $this->port
             // path
@@ -122,52 +131,62 @@ class Route implements RouteInterface
         return ($hostAttrs ?? []) + $attrs + $this->defaults;
     }
 
-    function generate(Url $baseUrl, array $parameters = [], bool $checkRequirements = true): Url
+    /**
+     * Generate an URL
+     *
+     * @throws \InvalidArgumentException if the parameters are not valid
+     */
+    function generate(Context $context, array $parameters = [], bool $checkRequirements = true): Url
     {
         $parameters += $this->defaults;
 
-        $url = clone $baseUrl;
+        $scheme = $this->scheme ?? $context->scheme;
+        $host = $this->hostPattern !== null
+            ? $this->hostPattern->generate($parameters, $checkRequirements)
+            : $context->host;
+        $port = $this->port ?? $context->getPortForScheme($scheme);
 
-        if ($this->allowedScheme !== null) {
-            $url->setScheme($this->allowedScheme);
-        }
-
-        if ($this->hostPattern !== null) {
-            $url->setHost($this->hostPattern->generate($parameters, $checkRequirements));
-        }
-
-        if ($this->port !== null) {
-            $url->setPort($this->port);
-        }
-
-        $url->setPath($url->getPath() . $this->pathPattern->generate($parameters, $checkRequirements));
-
-        $url->setQuery(array_diff_key($parameters, $this->knownParamMap)); // set extra params as query
-
-        return $url;
+        return new Url(
+            $scheme,
+            $host,
+            $scheme === 'https' && $port !== 443 || $scheme !== 'https' && $port !== 80
+                ? $port // non-standard port
+                : null,
+            $context->basePath . $this->pathPattern->generate($parameters, $checkRequirements),
+            $parameters
+                ? array_diff_key($parameters, $this->knownParamMap) // set extra params as query
+                : [],
+            null,
+            $scheme !== $context->scheme || $host !== $context->host || $port !== $context->port
+                ? Url::ABSOLUTE // prefer absolute URL if scheme, host or port is different from the context
+                : URL::RELATIVE
+        );
     }
 
+    /**
+     * Dump information about the route
+     */
     function dump(): string
     {
         $dump = '';
 
-        if ($this->allowedMethodMap === null) {
+        if ($this->methodMap === null) {
             $dump .= 'ANY';
-        } elseif ($this->allowedMethodMap === []) {
+        } elseif ($this->methodMap === []) {
             $dump .= 'NONE';
         } else {
-            $dump .= implode('|', array_keys($this->allowedMethodMap));
+            $dump .= implode('|', array_keys($this->methodMap));
         }
 
         $dump .= ' ';
 
-        if ($this->allowedScheme !== null) {
-            $dump .= $this->allowedScheme . '://';
+        if ($this->scheme !== null) {
+            $dump .= $this->scheme . '://';
         }
 
         if ($this->hostPattern !== null) {
             $dump .= $this->hostPattern->dump();
-        } elseif ($this->allowedScheme !== null || $this->port !== null) {
+        } elseif ($this->scheme !== null || $this->port !== null) {
             $dump .= '*';
         }
 

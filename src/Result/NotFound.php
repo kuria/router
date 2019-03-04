@@ -5,6 +5,6 @@ namespace Kuria\Router\Result;
 /**
  * No routes have matched
  */
-class NotFound implements ResultInterface
+class NotFound extends Result
 {
 }

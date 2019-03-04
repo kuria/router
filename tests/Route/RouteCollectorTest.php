@@ -4,6 +4,9 @@ namespace Kuria\Router\Route;
 
 use Kuria\DevMeta\Test;
 
+/**
+ * @covers \Kuria\Router\Route\RouteCollector
+ */
 class RouteCollectorTest extends Test
 {
     /** @var RouteCollector */
@@ -17,13 +20,13 @@ class RouteCollectorTest extends Test
     /**
      * @dataProvider provideRouteBuilderFactoryMethods
      */
-    function testShouldCreateRouteBuilder(string $method, ?array $expectedAllowedMethods)
+    function testShouldCreateRouteBuilder(string $method, ?array $expectedMethods)
     {
         /** @var RouteBuilder $builder */
         $builder = $this->collector->{$method}('foo_bar');
 
         $this->assertSame('foo_bar', $builder->getName());
-        $this->assertSame($expectedAllowedMethods, $builder->getAllowedMethods());
+        $this->assertSame($expectedMethods, $builder->getMethods());
         $this->assertTrue($this->collector->hasBuilder('foo_bar'));
         $this->assertSame($builder, $this->collector->getBuilder('foo_bar'));
         $this->assertSame(['foo_bar' => $builder], $this->collector->getBuilders());
@@ -37,7 +40,7 @@ class RouteCollectorTest extends Test
     function provideRouteBuilderFactoryMethods()
     {
         return [
-            // method, expectedAllowedMethods
+            // method, expectedMethods
             ['add', null],
             ['get', ['GET']],
             ['head', ['HEAD']],
@@ -58,7 +61,7 @@ class RouteCollectorTest extends Test
 
         $variantBuilder = $this->collector
             ->addVariant('foo', 'foo_submit')
-            ->allowedMethods(['POST'])
+            ->methods(['POST'])
             ->attributes(['handler' => 'submit_foo']);
 
         $this->assertNotSame($builder, $variantBuilder);

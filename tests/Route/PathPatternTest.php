@@ -2,6 +2,9 @@
 
 namespace Kuria\Router\Route;
 
+/**
+ * @covers \Kuria\Router\Route\PathPattern
+ */
 class PathPatternTest extends PatternTest
 {
     function providePatterns()

@@ -7,28 +7,24 @@ class Subject
     /** @var string */
     public $method;
 
-    /** @var string|null */
+    /** @var string */
     public $scheme;
 
-    /** @var string|null */
+    /** @var string */
     public $host;
 
-    /** @var int|null */
+    /** @var int */
     public $port;
 
     /** @var string */
     public $path;
 
-    /** @var array */
-    public $query;
-
-    function __construct(string $method, ?string $scheme, ?string $host, ?int $port, string $path, array $query)
+    function __construct(string $method, string $scheme, string $host, int $port, string $path)
     {
         $this->method = $method;
         $this->scheme = $scheme;
         $this->host = $host;
         $this->port = $port;
         $this->path = $path;
-        $this->query = $query;
     }
 }

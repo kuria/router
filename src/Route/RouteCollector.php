@@ -32,7 +32,7 @@ class RouteCollector
      */
     function get(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['GET']);
+        return $this->add($routeName)->methods(['GET']);
     }
 
     /**
@@ -40,7 +40,7 @@ class RouteCollector
      */
     function head(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['HEAD']);
+        return $this->add($routeName)->methods(['HEAD']);
     }
 
     /**
@@ -48,7 +48,7 @@ class RouteCollector
      */
     function post(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['POST']);
+        return $this->add($routeName)->methods(['POST']);
     }
 
     /**
@@ -56,7 +56,7 @@ class RouteCollector
      */
     function put(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['PUT']);
+        return $this->add($routeName)->methods(['PUT']);
     }
 
     /**
@@ -64,7 +64,7 @@ class RouteCollector
      */
     function delete(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['DELETE']);
+        return $this->add($routeName)->methods(['DELETE']);
     }
 
     /**
@@ -72,7 +72,7 @@ class RouteCollector
      */
     function options(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['OPTIONS']);
+        return $this->add($routeName)->methods(['OPTIONS']);
     }
 
     /**
@@ -80,7 +80,7 @@ class RouteCollector
      */
     function patch(string $routeName): RouteBuilder
     {
-        return $this->add($routeName)->allowedMethods(['PATCH']);
+        return $this->add($routeName)->methods(['PATCH']);
     }
 
     /**

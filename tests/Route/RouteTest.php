@@ -3,9 +3,13 @@
 namespace Kuria\Router\Route;
 
 use Kuria\DevMeta\Test;
+use Kuria\Router\Context;
 use Kuria\Router\Subject;
 use Kuria\Url\Url;
 
+/**
+ * @covers \Kuria\Router\Route\Route
+ */
 class RouteTest extends Test
 {
     function testShouldCreateRoute()
@@ -25,8 +29,8 @@ class RouteTest extends Test
         );
 
         $this->assertSame('foo_bar', $route->getName());
-        $this->assertSame(['GET', 'POST'], $route->getAllowedMethods());
-        $this->assertSame('https', $route->getAllowedScheme());
+        $this->assertSame(['GET', 'POST'], $route->getMethods());
+        $this->assertSame('https', $route->getScheme());
         $this->assertSame($hostPatternMock, $route->getHostPattern());
         $this->assertSame(123, $route->getPort());
         $this->assertSame($pathPatternMock, $route->getPathPattern());
@@ -99,14 +103,14 @@ class RouteTest extends Test
             ],
 
             'any method' => [
-                $this->route(['allowedMethods' => null]),
+                $this->route(['methods' => null]),
                 $this->subject(['method' => 'PUT']),
                 false,
                 $successfulMatch,
             ],
 
             'any scheme' => [
-                $this->route(['allowedScheme' => null]),
+                $this->route(['scheme' => null]),
                 $this->subject(['scheme' => 'http']),
                 false,
                 $successfulMatch,
@@ -131,67 +135,100 @@ class RouteTest extends Test
     /**
      * @dataProvider provideRoutesForGeneration
      */
-    function testShouldGenerateAndDump(Route $route, Url $baseUrl, array $parameters, string $expectedUrl)
+    function testShouldGenerate(Route $route, Context $context, array $parameters, Url $expectedUrl)
     {
-        $this->assertSame($expectedUrl, $route->generate($baseUrl, $parameters)->build());
+        $this->assertLooselyIdentical($expectedUrl, $route->generate($context, $parameters));
     }
 
     function provideRoutesForGeneration()
     {
-        $baseUrl = Url::parse('http://localhost:9090/public');
-        $emptyBaseUrl = new Url();
-
+        $context = $this->context();
         $compiler = new PatternCompiler();
 
         return [
-            // route, baseUrl, parameters, expectedUrl
+            // route, context, parameters, expectedUrl
             'override all' => [
-                $this->route(),
-                $baseUrl,
+                $this->route(['scheme' => 'http', 'port' => 9090]),
+                $context,
+                ['serverId' => '99', 'name' => 'about'],
+                Url::parse('http://server-99:9090/app/page/about?default=foo'),
+            ],
+
+            'override scheme' => [
+                $this->route(['scheme' => 'http']),
+                $context,
                 ['serverId' => '1', 'name' => 'about'],
-                'https://server-1:8080/public/page/about?default=foo',
+                Url::parse('http://server-1:8080/app/page/about?default=foo'),
+            ],
+
+            'override host' => [
+                $this->route(),
+                $context,
+                ['serverId' => '99', 'name' => 'about'],
+                Url::parse('https://server-99:8080/app/page/about?default=foo'),
+            ],
+
+            'override port' => [
+                $this->route(['port' => 9090]),
+                $context,
+                ['serverId' => '1', 'name' => 'about'],
+                Url::parse('https://server-1:9090/app/page/about?default=foo'),
             ],
 
             'without scheme' => [
-                $this->route(['allowedScheme' => null]),
-                $baseUrl,
+                $this->route(['scheme' => null]),
+                $context,
                 ['serverId' => '1', 'name' => 'about'],
-                'http://server-1:8080/public/page/about?default=foo',
+                Url::parse('https://server-1:8080/app/page/about?default=foo', Url::RELATIVE),
             ],
 
             'without host' => [
                 $this->route(['hostPattern' => null]),
-                $baseUrl,
+                $context,
                 ['name' => 'about'],
-                'https://localhost:8080/public/page/about?default=foo',
+                Url::parse('https://server-1:8080/app/page/about?default=foo', Url::RELATIVE),
             ],
 
             'without port' => [
                 $this->route(['port' => null]),
-                $baseUrl,
+                $context,
                 ['serverId' => '1', 'name' => 'about'],
-                'https://server-1:9090/public/page/about?default=foo',
+                Url::parse('https://server-1:8080/app/page/about?default=foo', Url::RELATIVE),
             ],
 
             'without extra params' => [
                 $this->route(['defaults' => []]),
-                $baseUrl,
+                $context,
                 ['serverId' => '1', 'name' => 'about'],
-                'https://server-1:8080/public/page/about',
+                Url::parse('https://server-1:8080/app/page/about', Url::RELATIVE),
             ],
 
-            'plain route with empty base' => [
-                new Route('dummy', null, null, null, null, $compiler->compilePathPattern('/foo')),
-                $emptyBaseUrl,
+            'plain route' => [
+                $this->route([
+                    'methods' => null,
+                    'scheme' => null,
+                    'hostPattern' => null,
+                    'port' => null,
+                    'pathPattern' => $compiler->compilePathPattern('/foo'),
+                    'defaults' => [],
+                ]),
+                $context,
                 [],
-                '/foo',
+                Url::parse('https://server-1:8080/app/foo', Url::RELATIVE),
             ],
 
-            'empty route with empty base' => [
-                new Route('dummy', null, null, null, null, $compiler->compilePathPattern('')),
-                $emptyBaseUrl,
+            'empty route' => [
+                $this->route([
+                    'methods' => null,
+                    'scheme' => null,
+                    'hostPattern' => null,
+                    'port' => null,
+                    'pathPattern' => $compiler->compilePathPattern(''),
+                    'defaults' => [],
+                ]),
+                $context,
                 [],
-                '',
+                Url::parse('https://server-1:8080/app', Url::RELATIVE),
             ],
         ];
     }
@@ -201,7 +238,7 @@ class RouteTest extends Test
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Parameter "serverId" must match "{\d+$}ADu"');
 
-        $this->route()->generate(new Url(), ['serverId' => 'not-a-number', 'name' => 'about']);
+        $this->route()->generate($this->context(), ['serverId' => 'not-a-number', 'name' => 'about']);
     }
 
     function testShouldThrowExceptionWhenGeneratingWithInvalidPathParameter()
@@ -209,14 +246,14 @@ class RouteTest extends Test
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('Parameter "name" must match "{\w+$}ADu"');
 
-        $this->route()->generate(new Url(), ['serverId' => '123', 'name' => '@ foo @']);
+        $this->route()->generate($this->context(), ['serverId' => '123', 'name' => '@ foo @']);
     }
 
     function testShouldGenerateWithInvalidParameterIfCheckingIsDisabled()
     {
-        $this->assertSame(
-            'https://server-not-a-number:8080/page/@%20foo%20@?default=foo',
-            $this->route()->generate(new Url(), ['serverId' => 'not-a-number', 'name' => '@ foo @'], false)->build()
+        $this->assertLooselyIdentical(
+            Url::parse('https://server-not-a-number:8080/app/page/@%20foo%20@?default=foo'),
+            $this->route()->generate($this->context(), ['serverId' => 'not-a-number', 'name' => '@ foo @'], false)
         );
     }
 
@@ -238,12 +275,12 @@ class RouteTest extends Test
             ],
 
             'no methods' => [
-                $this->route(['allowedMethods' => []]),
+                $this->route(['methods' => []]),
                 'NONE https://server-{serverId}:8080/page/{name}',
             ],
 
             'no scheme' => [
-                $this->route(['allowedScheme' => null]),
+                $this->route(['scheme' => null]),
                 'GET|POST server-{serverId}:8080/page/{name}',
             ],
 
@@ -258,7 +295,7 @@ class RouteTest extends Test
             ],
 
             'single method with no scheme, host or port' => [
-                $this->route(['allowedMethods' => ['HEAD'], 'allowedScheme' => null, 'hostPattern' => null, 'port' => null]),
+                $this->route(['methods' => ['HEAD'], 'scheme' => null, 'hostPattern' => null, 'port' => null]),
                 'HEAD /page/{name}',
             ],
 
@@ -278,8 +315,8 @@ class RouteTest extends Test
 
             $defaults = [
                 'name' => 'dummy',
-                'allowedMethods' => ['GET', 'POST'],
-                'allowedScheme' => 'https',
+                'methods' => ['GET', 'POST'],
+                'scheme' => 'https',
                 'hostPattern' => $compiler->compilePattern('server-{serverId}', ['serverId' => '\d+']),
                 'port' => 8080,
                 'pathPattern' => $compiler->compilePathPattern('/page/{name}', ['name' => '\w+']),
@@ -298,9 +335,22 @@ class RouteTest extends Test
             'host' => 'server-1',
             'port' => 8080,
             'path' => '/page/about',
-            'query' => [],
         ];
 
         return new Subject(...array_values(array_merge($defaults, $attrs)));
+    }
+
+    private function context(array $attrs = []): Context
+    {
+        static $defaults = [
+            'scheme' => 'https',
+            'host' => 'server-1',
+            'port' => 8080,
+            'basePath' => '/app',
+            'httpPort' => null,
+            'httpsPort' => null,
+        ];
+
+        return new Context(...array_values(array_merge($defaults, $attrs)));
     }
 }

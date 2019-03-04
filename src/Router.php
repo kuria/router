@@ -5,41 +5,30 @@ namespace Kuria\Router;
 use Kuria\Router\Result\Match;
 use Kuria\Router\Result\MethodNotAllowed;
 use Kuria\Router\Result\NotFound;
-use Kuria\Router\Result\ResultInterface;
+use Kuria\Router\Result\Result;
 use Kuria\Router\Route\Route;
 use Kuria\Router\Route\RouteCollector;
 use Kuria\Url\Url;
 
 class Router
 {
+    /** @var Context|null */
+    private $defaultContext;
+
     /** @var Route[] name-indexed */
     private $routes = [];
-
-    /** @var Url */
-    private $baseUrl;
 
     /** @var RouteCollector|null */
     private $routeCollector;
 
-    function __construct(?Url $baseUrl = null)
+    function getDefaultContext(): ?Context
     {
-        $this->baseUrl = $baseUrl ?? static::getDefaultBaseUrl();
+        return $this->defaultContext;
     }
 
-    /**
-     * Get the configured base URL
-     */
-    function getBaseUrl(): Url
+    function setDefaultContext(?Context $defaultContext): void
     {
-        return $this->baseUrl;
-    }
-
-    /**
-     * Set base URL to be used during route matching and URL generation
-     */
-    function setBaseUrl(Url $baseUrl): void
-    {
-        $this->baseUrl = $baseUrl;
+        $this->defaultContext  = $defaultContext;
     }
 
     function setRouteCollector(RouteCollector $routeCollector): void
@@ -48,8 +37,6 @@ class Router
     }
 
     /**
-     * Get configured routes
-     *
      * @return Route[] name-indexed
      */
     function getRoutes(): array
@@ -78,7 +65,7 @@ class Router
      */
     function addRoutes(array $routes): void
     {
-        $this->routes = $routes + $this->routes;
+        $this->routes = array_merge($this->routes, $routes);
     }
 
     /**
@@ -93,7 +80,7 @@ class Router
 
         $callback($collector);
 
-        $this->routes = $collector->getRoutes() + $this->routes;
+        $this->routes = array_merge($this->routes, $collector->getRoutes());
     }
 
     /**
@@ -105,19 +92,17 @@ class Router
     }
 
     /**
-     * Match routes against the given request
+     * Match routes against the given subject
      */
-    function match(string $method, Url $url): ResultInterface
+    function match(Subject $subject): Result
     {
-        $subject = $this->createSubjectFromUrl($method, $url);
-
         // try to find a match
         foreach ($this->routes as $route) {
             $match = $route->match($subject);
 
             if ($match !== null) {
                 // success
-                return new Match($route, $match);
+                return new Match($subject, $route, $match);
             }
         }
 
@@ -131,7 +116,7 @@ class Router
 
                 if ($match !== null) {
                     // success
-                    return new Match($route, $match);
+                    return new Match($subject, $route, $match);
                 }
             }
         }
@@ -140,71 +125,74 @@ class Router
         $allowedMethodMap = [];
 
         foreach ($this->routes as $route) {
-            if ($route->match($subject, true) !== null && ($allowedMethods = $route->getAllowedMethods())) {
+            if ($route->match($subject, true) !== null && ($allowedMethods = $route->getMethods())) {
                 $allowedMethodMap += array_flip($allowedMethods);
             }
         }
 
         if ($allowedMethodMap) {
             // method not allowed
-            return new MethodNotAllowed(array_keys($allowedMethodMap));
+            return new MethodNotAllowed($subject, array_keys($allowedMethodMap));
         }
 
         // not found
-        return new NotFound();
+        return new NotFound($subject);
+    }
+
+    /**
+     * Match routes against the given path
+     *
+     * - the path should not contain the base path
+     * - scheme, host and port is derived from the given or default context
+     *
+     * @throws \LogicException if no context was given and there is no default context
+     */
+    function matchPath(string $method, string $path, ?Context $context = null): Result
+    {
+        if ($context === null) {
+            $context = $this->requireDefaultContext();
+        }
+
+        return $this->match(new Subject($method, $context->scheme, $context->host, $context->port, $path));
     }
 
     /**
      * Generate URL for the given route
      *
+     * If no context is given, the default context will be used instead.
+     *
      * @throws \OutOfBoundsException if no such route exists
      * @throws \InvalidArgumentException if some parameters are missing or invalid
+     * @throws \LogicException if no context was given and there is no default context
      */
-    function generate(string $routeName, array $parameters = [], bool $checkRequirements = true): Url
-    {
+    function generate(
+        string $routeName,
+        array $parameters = [],
+        bool $checkRequirements = true,
+        ?Context $context = null
+    ): Url {
         if (!isset($this->routes[$routeName])) {
             throw new \OutOfBoundsException(sprintf('There is no route named "%s"', $routeName));
         }
 
-        return $this->routes[$routeName]->generate($this->baseUrl, $parameters, $checkRequirements);
+        return $this->routes[$routeName]->generate(
+            $context ?? $this->requireDefaultContext(),
+            $parameters,
+            $checkRequirements
+        );
+    }
+
+    private function requireDefaultContext(): Context
+    {
+        if ($this->defaultContext === null) {
+            throw new \LogicException('Default context is not defined');
+        }
+
+        return $this->defaultContext;
     }
 
     private function getRouteCollector(): RouteCollector
     {
         return $this->routeCollector ?? ($this->routeCollector = new RouteCollector());
-    }
-
-    protected function createSubjectFromUrl(string $method, Url $url): Subject
-    {
-        $path = $url->getPath();
-
-        // remove base URL path before matching
-        $basePath = $this->baseUrl->getPath();
-        $basePathLength = strlen($basePath);
-
-        if ($basePathLength > 0 && strncmp($path, $basePath, $basePathLength) === 0) {
-            $path = substr($path, $basePathLength);
-        }
-
-        return new Subject(
-            $method,
-            $url->getScheme(),
-            $url->getHost(),
-            $url->getPort(),
-            rawurldecode($path),
-            $url->getQuery()
-        );
-    }
-
-    protected static function getDefaultBaseUrl(): Url
-    {
-        $url = Url::current();
-        $url->setUser(null);
-        $url->setPassword(null);
-        $url->setPath('');
-        $url->setQuery([]);
-        $url->setFragment(null);
-
-        return $url;
     }
 }

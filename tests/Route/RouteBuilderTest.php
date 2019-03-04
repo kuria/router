@@ -4,6 +4,9 @@ namespace Kuria\Router\Route;
 
 use Kuria\DevMeta\Test;
 
+/**
+ * @covers \Kuria\Router\Route\RouteBuilder
+ */
 class RouteBuilderTest extends Test
 {
     /** @var Pattern */
@@ -60,7 +63,8 @@ class RouteBuilderTest extends Test
     function testShouldCopyWithNewName()
     {
         $this->builder
-            ->allowedMethods(['GET', 'POST'])
+            ->methods(['GET', 'POST'])
+            ->scheme('http')
             ->host('server-{serverId}')
             ->port(8080)
             ->path('/page/{name}')
@@ -72,7 +76,8 @@ class RouteBuilderTest extends Test
 
         $this->assertNotSame($this->builder, $copiedBuilder);
         $this->assertSame('baz_qux', $copiedBuilder->getName());
-        $this->assertSame(['GET', 'POST'], $this->builder->getAllowedMethods());
+        $this->assertSame(['GET', 'POST'], $this->builder->getMethods());
+        $this->assertSame('http', $this->builder->getScheme());
         $this->assertSame('server-{serverId}', $this->builder->getHost());
         $this->assertSame(8080, $this->builder->getPort());
         $this->assertSame('/page/{name}', $this->builder->getPath());
@@ -84,7 +89,8 @@ class RouteBuilderTest extends Test
     function testShouldBuildRouteWithAllAttributes()
     {
         $this->builder
-            ->allowedMethods(['GET', 'POST'])
+            ->methods(['GET', 'POST'])
+            ->scheme('http')
             ->host('server-{serverId}')
             ->port(8080)
             ->path('/page/{name}')
@@ -92,7 +98,8 @@ class RouteBuilderTest extends Test
             ->attributes(['controller' => 'PageController'])
             ->requirements(['serverId' => '\d+']);
 
-        $this->assertSame(['GET', 'POST'], $this->builder->getAllowedMethods());
+        $this->assertSame(['GET', 'POST'], $this->builder->getMethods());
+        $this->assertSame('http', $this->builder->getScheme());
         $this->assertSame('server-{serverId}', $this->builder->getHost());
         $this->assertSame(8080, $this->builder->getPort());
         $this->assertSame('/page/{name}', $this->builder->getPath());
@@ -103,7 +110,8 @@ class RouteBuilderTest extends Test
         $route = $this->builder->build();
 
         $this->assertSame('foo_bar', $route->getName());
-        $this->assertSame(['GET', 'POST'], $route->getAllowedMethods());
+        $this->assertSame('http', $route->getScheme());
+        $this->assertSame(['GET', 'POST'], $route->getMethods());
         $this->assertSame($this->hostPatternMock, $route->getHostPattern());
         $this->assertSame(8080, $route->getPort());
         $this->assertSame($this->pathPatternMock, $route->getPathPattern());
@@ -114,7 +122,8 @@ class RouteBuilderTest extends Test
     function testShouldBuildRouteWithEmptyAttributes()
     {
         $this->builder
-            ->allowedMethods(null)
+            ->methods(null)
+            ->scheme(null)
             ->host(null)
             ->port(null)
             ->path('')
@@ -122,7 +131,8 @@ class RouteBuilderTest extends Test
             ->attributes([])
             ->requirements([]);
 
-        $this->assertNull($this->builder->getAllowedMethods());
+        $this->assertNull($this->builder->getMethods());
+        $this->assertNull($this->builder->getScheme());
         $this->assertNull($this->builder->getHost());
         $this->assertNull($this->builder->getPort());
         $this->assertSame('', $this->builder->getPath());
@@ -133,7 +143,8 @@ class RouteBuilderTest extends Test
         $route = $this->builder->build();
 
         $this->assertSame('foo_bar', $route->getName());
-        $this->assertNull($route->getAllowedMethods());
+        $this->assertNull($route->getMethods());
+        $this->assertNull($route->getScheme());
         $this->assertNull($route->getHostPattern());
         $this->assertNull($route->getPort());
         $this->assertSame($this->pathPatternMock, $route->getPathPattern());
@@ -145,7 +156,8 @@ class RouteBuilderTest extends Test
     {
         $this->builder->path('/');
 
-        $this->assertNull($this->builder->getAllowedMethods());
+        $this->assertNull($this->builder->getMethods());
+        $this->assertNull($this->builder->getScheme());
         $this->assertNull($this->builder->getHost());
         $this->assertNull($this->builder->getPort());
         $this->assertSame('/', $this->builder->getPath());
@@ -156,7 +168,8 @@ class RouteBuilderTest extends Test
         $route = $this->builder->build();
 
         $this->assertSame('foo_bar', $route->getName());
-        $this->assertNull($route->getAllowedMethods());
+        $this->assertNull($route->getMethods());
+        $this->assertNull($route->getScheme());
         $this->assertNull($route->getHostPattern());
         $this->assertNull($route->getPort());
         $this->assertSame($this->pathPatternMock, $route->getPathPattern());
@@ -196,12 +209,12 @@ class RouteBuilderTest extends Test
         $this->assertSame('prefix--suffix', $this->builder->getPath());
     }
 
-    function testShouldThrowExceptionIfInvalidAllowedMethodIsSpecified()
+    function testShouldThrowExceptionIfInvalidMethodIsSpecified()
     {
         $this->expectException(\OutOfBoundsException::class);
         $this->expectExceptionMessage('Invalid method "put", valid methods are: GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH');
 
-        $this->builder->allowedMethods(['POST', 'put']);
+        $this->builder->methods(['POST', 'put']);
     }
 
     function testShouldThrowExceptionIfPathIsNotSpecified()

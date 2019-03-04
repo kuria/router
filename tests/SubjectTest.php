@@ -4,6 +4,9 @@ namespace Kuria\Router;
 
 use Kuria\DevMeta\Test;
 
+/**
+ * @covers \Kuria\Router\Subject
+ */
 class SubjectTest extends Test
 {
     function testShouldCreateSubject()
@@ -13,8 +16,7 @@ class SubjectTest extends Test
             'https',
             'example.com',
             8080,
-            '/',
-            ['foo' => 'bar']
+            '/'
         );
 
         $this->assertSame('GET', $subject->method);
@@ -22,6 +24,5 @@ class SubjectTest extends Test
         $this->assertSame('example.com', $subject->host);
         $this->assertSame(8080, $subject->port);
         $this->assertSame('/', $subject->path);
-        $this->assertSame(['foo' => 'bar'], $subject->query);
     }
 }

@@ -4,6 +4,9 @@ namespace Kuria\Router\Route;
 
 use Kuria\DevMeta\Test;
 
+/**
+ * @covers \Kuria\Router\Route\PatternCompiler
+ */
 class PatternCompilerTest extends Test
 {
     /** @var PatternCompiler */
